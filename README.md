@@ -44,13 +44,14 @@ No installation required. Open `index.html` in any modern web browser.
 - **Strict Grammar**: Validation fails on non-standard JSON, ensuring compatibility with production services.
 
 ## Roadmap
-- [ ] Drag-and-drop file loading.
-- [ ] In-editor search and filtering.
-- [ ] Collapsible JSON nodes.
+- Drag-and-drop file loading.
+- In-editor search and filtering.
+- Collapsible JSON nodes.
 
 ## Screenshots
-![Interface Demo](https://via.placeholder.com/800x450?text=Editor+Interface+Demo)
-![Diff Alignment](https://via.placeholder.com/800x450?text=Diff+Alignment+Visualization)
+![Interface Demo](https://github.com/user-attachments/assets/c8574345-387f-4d96-824d-63eda0a0a2fe)
+![Diff Alignment](https://github.com/user-attachments/assets/5e36a52e-c50f-4699-a2ec-f70c3e864ddd)
 
 ## License
+
 MIT License. Free for personal and commercial use.
