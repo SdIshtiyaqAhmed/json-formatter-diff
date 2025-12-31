@@ -1,0 +1,909 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JSON Formatter + Diff | Professional Tool</title>
+    <meta name="description"
+        content="A professional-grade JSON Formatter and Diff tool with side-by-side editing, syntax highlighting, and line-based comparisons.">
+    <style>
+        :root {
+            --bg-color: #f8fafc;
+            --surface-color: #ffffff;
+            --border-color: #e2e8f0;
+            --text-main: #1e293b;
+            --text-muted: #64748b;
+            --accent-color: #3b82f6;
+            --accent-hover: #2563eb;
+            --error-color: #ef4444;
+            --success-bg: #dcfce7;
+            --success-text: #166534;
+            --diff-add-bg: rgba(34, 197, 94, 0.15);
+            --diff-remove-bg: rgba(239, 68, 68, 0.15);
+            --diff-change-bg: rgba(234, 179, 8, 0.15);
+            --json-key: #be185d;
+            --json-string: #059669;
+            --json-number: #d97706;
+            --json-bool: #7c3aed;
+            --json-null: #64748b;
+            --font-mono: 'Fira Code', 'Cascadia Code', source-code-pro, Menlo, Monaco, Consolas, 'Courier New', monospace;
+            --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+            --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+        }
+
+        [data-theme="dark"] {
+            --bg-color: #0f172a;
+            --surface-color: #1e293b;
+            --border-color: #334155;
+            --text-main: #f1f5f9;
+            --text-muted: #94a3b8;
+            --accent-color: #60a5fa;
+            --accent-hover: #3b82f6;
+            --error-color: #f87171;
+            --success-bg: rgba(34, 197, 94, 0.1);
+            --success-text: #4ade80;
+            --diff-add-bg: rgba(34, 197, 94, 0.2);
+            --diff-remove-bg: rgba(239, 68, 68, 0.2);
+            --diff-change-bg: rgba(234, 179, 8, 0.2);
+            --json-key: #f472b6;
+            --json-string: #34d399;
+            --json-number: #fbbf24;
+            --json-bool: #a78bfa;
+            --json-null: #94a3b8;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            transition: background-color 0.3s ease;
+        }
+
+        header {
+            padding: 0.75rem 1.5rem;
+            background: var(--surface-color);
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 100;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .brand h1 {
+            font-size: 1.1rem;
+            font-weight: 700;
+        }
+
+        .global-controls {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+        }
+
+        .btn {
+            appearance: none;
+            padding: 0.4rem 0.75rem;
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
+            background: var(--surface-color);
+            color: var(--text-main);
+            font-size: 0.85rem;
+            font-weight: 500;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            transition: all 0.2s;
+        }
+
+        .btn:hover {
+            border-color: var(--accent-color);
+            background: var(--bg-color);
+        }
+
+        .btn-primary {
+            background: var(--accent-color);
+            color: white;
+            border-color: var(--accent-color);
+        }
+
+        .btn-primary:hover {
+            background: var(--accent-hover);
+        }
+
+        .toggle-group {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin: 0 1rem;
+            padding: 0 1rem;
+            border-left: 1px solid var(--border-color);
+        }
+
+        .toggle-item {
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            cursor: pointer;
+        }
+
+        .warning-banner {
+            display: none;
+            background: #fff7ed;
+            border-bottom: 1px solid #fed7aa;
+            color: #9a3412;
+            padding: 0.4rem 1.5rem;
+            font-size: 0.8rem;
+            text-align: center;
+        }
+
+        main {
+            flex: 1;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0;
+            background: var(--border-color);
+            position: relative;
+        }
+
+        .pane {
+            display: flex;
+            flex-direction: column;
+            background: var(--bg-color);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .pane-header {
+            padding: 0.4rem 1rem;
+            background: var(--surface-color);
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 10;
+        }
+
+        .pane-title {
+            font-size: 0.7rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            color: var(--text-muted);
+        }
+
+        .pane-controls {
+            display: flex;
+            gap: 0.25rem;
+        }
+
+        .editor-container {
+            flex: 1;
+            position: relative;
+            font-family: var(--font-mono);
+            font-size: 13px;
+            line-height: 1.6;
+            overflow: hidden;
+        }
+
+        .line-numbers {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 45px;
+            height: 100%;
+            background: var(--surface-color);
+            border-right: 1px solid var(--border-color);
+            color: var(--text-muted);
+            text-align: right;
+            padding: 1rem 0.5rem;
+            user-select: none;
+            z-index: 5;
+        }
+
+        .editor-viewport {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            overflow: auto;
+            padding-left: 45px;
+        }
+
+        .editor-content {
+            position: relative;
+            min-height: 100%;
+            width: 100%;
+        }
+
+        textarea,
+        pre {
+            margin: 0;
+            padding: 1rem;
+            width: 100%;
+            height: 100%;
+            min-height: 100%;
+            border: none;
+            outline: none;
+            background: transparent;
+            font-family: inherit;
+            font-size: inherit;
+            line-height: inherit;
+            tab-size: 2;
+            word-wrap: normal;
+            white-space: pre;
+            overflow: visible;
+        }
+
+        textarea {
+            position: absolute;
+            top: 0;
+            left: 0;
+            color: transparent;
+            caret-color: var(--text-main);
+            resize: none;
+            z-index: 3;
+        }
+
+        pre {
+            position: relative;
+            z-index: 1;
+            pointer-events: none;
+            color: var(--text-main);
+        }
+
+        .token-key {
+            color: var(--json-key);
+            font-weight: 500;
+        }
+
+        .token-string {
+            color: var(--json-string);
+        }
+
+        .token-number {
+            color: var(--json-number);
+        }
+
+        .token-boolean {
+            color: var(--json-bool);
+        }
+
+        .token-null {
+            color: var(--json-null);
+            font-style: italic;
+        }
+
+        .token-punc {
+            color: var(--text-muted);
+        }
+
+        .diff-line {
+            display: block;
+            width: 100%;
+            margin: 0 -1rem;
+            padding: 0 1rem;
+        }
+
+        .diff-added {
+            background-color: var(--diff-add-bg);
+            box-shadow: inset 3px 0 0 #22c55e;
+        }
+
+        .diff-removed {
+            background-color: var(--diff-remove-bg);
+            box-shadow: inset 3px 0 0 #ef4444;
+        }
+
+        .diff-changed {
+            background-color: var(--diff-change-bg);
+            box-shadow: inset 3px 0 0 #eab308;
+        }
+
+        .diff-placeholder {
+            background-color: var(--border-color);
+            opacity: 0.25;
+            color: transparent;
+        }
+
+        .validation-error {
+            display: none;
+            padding: 0.5rem 1rem;
+            background: #fee2e2;
+            border-top: 1px solid #fecaca;
+            color: #991b1b;
+            font-size: 0.75rem;
+            border-radius: 0;
+        }
+
+        .status-bar {
+            padding: 0.4rem 1.5rem;
+            background: var(--surface-color);
+            border-top: 1px solid var(--border-color);
+            font-size: 0.75rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: var(--text-muted);
+        }
+
+        .summary-item b {
+            color: var(--text-main);
+            margin-right: 2px;
+        }
+
+        .diff-mode-note {
+            color: var(--accent-color);
+            font-weight: 600;
+            display: none;
+        }
+
+        #progressOverlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.1);
+            z-index: 200;
+            display: none;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .spinner {
+            width: 30px;
+            height: 30px;
+            border: 3px solid var(--accent-color);
+            border-top-color: transparent;
+            border-radius: 50%;
+            animate: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--border-color);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--text-muted);
+        }
+    </style>
+</head>
+
+<body data-theme="light">
+    <div id="progressOverlay">
+        <div class="spinner"></div>
+    </div>
+    <header>
+        <div class="brand">
+            <h1>JSON Formatter + Diff</h1>
+        </div>
+        <div class="global-controls">
+            <div class="toggle-group">
+                <label class="toggle-item"><input type="checkbox" id="autoFormat" /> Auto-format</label>
+                <label class="toggle-item"><input type="checkbox" id="liveHighlight" checked /> Highlight while
+                    typing</label>
+                <button class="btn" id="themeToggle">🌓 Theme</button>
+            </div>
+            <button class="btn" id="loadSample">Load Sample</button>
+            <button class="btn" id="swapPanes">Swap ⇄</button>
+            <button class="btn btn-primary" id="runDiff">Diff (Ctrl+D)</button>
+            <button class="btn" id="downloadReport">Report ↓</button>
+        </div>
+    </header>
+
+    <div id="topWarning" class="warning-banner">One or both inputs are invalid JSON. Performing raw text comparison.
+    </div>
+
+    <main>
+        <section class="pane" id="paneLeft">
+            <div class="pane-header">
+                <span class="pane-title">Left Pane</span>
+                <div class="pane-controls">
+                    <button class="btn btn-icon" data-action="undo" title="Undo (Ctrl+Z)">⟲</button>
+                    <button class="btn btn-icon" data-action="redo" title="Redo (Ctrl+Y)">⟳</button>
+                    <button class="btn btn-icon" data-action="format">Format</button>
+                    <button class="btn btn-icon" data-action="validate">Validate</button>
+                    <button class="btn btn-icon" data-action="minify">Minify</button>
+                    <button class="btn btn-icon" data-action="copy">Copy</button>
+                    <button class="btn btn-icon" data-action="clear">Clear</button>
+                </div>
+            </div>
+            <div class="editor-container">
+                <div class="line-numbers" id="leftLineNumbers"></div>
+                <div class="editor-viewport" id="leftViewport">
+                    <div class="editor-content">
+                        <textarea id="leftInput" spellcheck="false" wrap="off"></textarea>
+                        <pre id="leftHighlight"></pre>
+                    </div>
+                </div>
+            </div>
+            <div id="leftError" class="validation-error"></div>
+        </section>
+
+        <section class="pane" id="paneRight">
+            <div class="pane-header">
+                <span class="pane-title">Right Pane</span>
+                <div class="pane-controls">
+                    <button class="btn btn-icon" data-action="undo" title="Undo (Ctrl+Z)">⟲</button>
+                    <button class="btn btn-icon" data-action="redo" title="Redo (Ctrl+Y)">⟳</button>
+                    <button class="btn btn-icon" data-action="format">Format</button>
+                    <button class="btn btn-icon" data-action="validate">Validate</button>
+                    <button class="btn btn-icon" data-action="minify">Minify</button>
+                    <button class="btn btn-icon" data-action="copy">Copy</button>
+                    <button class="btn btn-icon" data-action="clear">Clear</button>
+                </div>
+            </div>
+            <div class="editor-container">
+                <div class="line-numbers" id="rightLineNumbers"></div>
+                <div class="editor-viewport" id="rightViewport">
+                    <div class="editor-content">
+                        <textarea id="rightInput" spellcheck="false" wrap="off"></textarea>
+                        <pre id="rightHighlight"></pre>
+                    </div>
+                </div>
+            </div>
+            <div id="rightError" class="validation-error"></div>
+        </section>
+    </main>
+
+    <footer class="status-bar">
+        <div id="diffSummary">Ready</div>
+        <div class="diff-mode-note" id="heuristicNote">⚠️ Heuristic mode active (>2k lines)</div>
+        <div class="shortcuts">Ctrl+Enter: Format | Ctrl+D: Diff | Ctrl+L: Clear</div>
+    </footer>
+
+    <script>
+        const CONFIG = { MAX_LCS_LINES: 2000 };
+        const STATE = {
+            theme: 'light', autoFormat: false, liveHighlight: true,
+            left: '', right: '', diffData: null, isDiffing: false,
+            history: {
+                left: { undo: [], redo: [] },
+                right: { undo: [], redo: [] }
+            }
+        };
+
+        const dom = {
+            leftInput: document.getElementById('leftInput'),
+            rightInput: document.getElementById('rightInput'),
+            leftHighlight: document.getElementById('leftHighlight'),
+            rightHighlight: document.getElementById('rightHighlight'),
+            leftViewport: document.getElementById('leftViewport'),
+            rightViewport: document.getElementById('rightViewport'),
+            leftLines: document.getElementById('leftLineNumbers'),
+            rightLines: document.getElementById('rightLineNumbers'),
+            leftError: document.getElementById('leftError'),
+            rightError: document.getElementById('rightError'),
+            diffSummary: document.getElementById('diffSummary'),
+            heuristicNote: document.getElementById('heuristicNote'),
+            topWarning: document.getElementById('topWarning'),
+            progress: document.getElementById('progressOverlay'),
+            autoFormat: document.getElementById('autoFormat'),
+            liveHighlight: document.getElementById('liveHighlight')
+        };
+
+        // --- JSON Tokenizer ---
+        // Character-by-character scanner for syntax highlighting
+        function tokenize(text) {
+            let i = 0;
+            let result = '';
+            const escapeMap = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' };
+            const esc = s => s.replace(/[&<>"]/g, c => escapeMap[c]);
+
+            while (i < text.length) {
+                const char = text[i];
+                if (/\s/.test(char)) {
+                    result += char; i++;
+                } else if (char === '"') {
+                    // String literal
+                    let start = i; i++;
+                    while (i < text.length) {
+                        if (text[i] === '\\') i += 2;
+                        else if (text[i] === '"') { i++; break; }
+                        else i++;
+                    }
+                    const str = text.substring(start, i);
+                    const isKey = text[i] === ':' || /^\s*:/.test(text.substring(i));
+                    result += `<span class="${isKey ? 'token-key' : 'token-string'}">${esc(str)}</span>`;
+                } else if (/[0-9\-]/.test(char)) {
+                    // Number
+                    let start = i;
+                    while (i < text.length && /[0-9\.eE\+\-]/.test(text[i])) i++;
+                    result += `<span class="token-number">${esc(text.substring(start, i))}</span>`;
+                } else if (/[a-z]/.test(char)) {
+                    // Boolean or Null
+                    let start = i;
+                    while (i < text.length && /[a-z]/.test(text[i])) i++;
+                    const word = text.substring(start, i);
+                    const cls = (word === 'true' || word === 'false') ? 'token-boolean' : (word === 'null' ? 'token-null' : '');
+                    result += cls ? `<span class="${cls}">${word}</span>` : word;
+                } else if (/[\[\]{}:,]/.test(char)) {
+                    result += `<span class="token-punc">${char}</span>`; i++;
+                } else {
+                    result += char; i++;
+                }
+            }
+            return result + '\n';
+        }
+
+        // --- Validation & Utility ---
+        // Extracts line/col from JSON.parse error and emits coordinates
+        function validateJson(text) {
+            if (!text.trim()) return { ok: true, value: null };
+            try {
+                const val = JSON.parse(text);
+                return { ok: true, value: val };
+            } catch (e) {
+                const posMatch = e.message.match(/at position (\d+)/);
+                let line = 1, col = 1;
+                if (posMatch) {
+                    const pos = parseInt(posMatch[1]);
+                    const lines = text.slice(0, pos).split('\n');
+                    line = lines.length;
+                    col = lines[lines.length - 1].length + 1;
+                }
+                return { ok: false, message: e.message, line, col };
+            }
+        }
+
+        function normalizeJson(obj) {
+            function sortKeys(val) {
+                if (Array.isArray(val)) return val.map(sortKeys);
+                if (val !== null && typeof val === 'object') {
+                    return Object.keys(val).sort().reduce((acc, key) => {
+                        acc[key] = sortKeys(val[key]);
+                        return acc;
+                    }, {});
+                }
+                return val;
+            }
+            return JSON.stringify(sortKeys(obj), null, 2);
+        }
+
+        // --- Diff Algorithms ---
+        // Standard LCS for high precision
+        function lcsDiff(A, B) {
+            const n = A.length, m = B.length;
+            const dp = Array.from({ length: n + 1 }, () => new Int32Array(m + 1));
+            for (let i = 1; i <= n; i++) {
+                for (let j = 1; j <= m; j++) {
+                    if (A[i - 1] === B[j - 1]) dp[i][j] = dp[i - 1][j - 1] + 1;
+                    else dp[i][j] = Math.max(dp[i - 1][j], dp[i][j - 1]);
+                }
+            }
+            let i = n, j = m, res = [];
+            while (i > 0 || j > 0) {
+                if (i > 0 && j > 0 && A[i - 1] === B[j - 1]) { res.unshift({ mod: 0, val: A[--i] }); j--; }
+                else if (j > 0 && (i === 0 || dp[i][j - 1] >= dp[i - 1][j])) { res.unshift({ mod: 1, val: B[--j] }); }
+                else { res.unshift({ mod: -1, val: A[--i] }); }
+            }
+            return res;
+        }
+
+        // Index-queue heuristic for fast massive-data diffs
+        function heuristicDiff(A, B) {
+            const res = [];
+            const max = Math.max(A.length, B.length);
+            for (let i = 0; i < max; i++) {
+                if (A[i] === B[i]) res.push({ mod: 0, val: A[i] });
+                else {
+                    if (i < A.length) res.push({ mod: -1, val: A[i] });
+                    if (i < B.length) res.push({ mod: 1, val: B[i] });
+                }
+            }
+            return res;
+        }
+
+        // --- Paired Row Engine ---
+        // Aligns left/right lines into static rows with placeholders
+        function generatePairedRows(diffOps) {
+            const rows = [];
+            let i = 0;
+            while (i < diffOps.length) {
+                const op = diffOps[i];
+                if (op.mod === 0) {
+                    rows.push({ left: op.val, right: op.val, lCls: '', rCls: '' });
+                } else if (op.mod === -1) {
+                    // Peek for change
+                    if (diffOps[i + 1] && diffOps[i + 1].mod === 1) {
+                        rows.push({ left: op.val, right: diffOps[i + 1].val, lCls: 'diff-changed', rCls: 'diff-changed' });
+                        i++;
+                    } else {
+                        rows.push({ left: op.val, right: '', lCls: 'diff-removed', rCls: 'diff-placeholder' });
+                    }
+                } else {
+                    rows.push({ left: '', right: op.val, lCls: 'diff-placeholder', rCls: 'diff-added' });
+                }
+                i++;
+            }
+            return rows;
+        }
+
+        // --- Orchestration ---
+        async function runDiff() {
+            if (STATE.isDiffing) return;
+            STATE.isDiffing = true;
+            dom.progress.style.display = 'flex';
+
+            // Clean UI
+            dom.topWarning.style.display = 'none';
+            dom.heuristicNote.style.display = 'none';
+
+            let lText = dom.leftInput.value, rText = dom.rightInput.value;
+            const lVal = validateJson(lText), rVal = validateJson(rText);
+            let mode = 'JSON';
+
+            if (lVal.ok && rVal.ok && lVal.value !== null && rVal.value !== null) {
+                lText = normalizeJson(lVal.value);
+                rText = normalizeJson(rVal.value);
+                dom.leftInput.value = lText; dom.rightInput.value = rText;
+            } else {
+                mode = 'Text';
+                dom.topWarning.style.display = 'block';
+            }
+
+            const A = lText.split('\n'), B = rText.split('\n');
+            const useHeuristic = A.length > CONFIG.MAX_LCS_LINES || B.length > CONFIG.MAX_LCS_LINES;
+
+            // Yield browser thread
+            await new Promise(r => setTimeout(r, 0));
+
+            const ops = useHeuristic ? heuristicDiff(A, B) : lcsDiff(A, B);
+            if (useHeuristic) dom.heuristicNote.style.display = 'block';
+
+            const paired = generatePairedRows(ops);
+            STATE.diffData = { rows: paired, mode, algorithm: useHeuristic ? 'Heuristic' : 'LCS' };
+            renderPairedDiff(paired);
+
+            STATE.isDiffing = false;
+            dom.progress.style.display = 'none';
+            saveState();
+        }
+
+        function renderPairedDiff(rows) {
+            let lHtml = '', rHtml = '', lNums = '', rNums = '';
+            let added = 0, removed = 0, changed = 0;
+            const esc = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+            rows.forEach((row, idx) => {
+                lHtml += `<span class="diff-line ${row.lCls}">${esc(row.left)}</span>\n`;
+                rHtml += `<span class="diff-line ${row.rCls}">${esc(row.right)}</span>\n`;
+                lNums += (row.left || row.lCls !== 'diff-placeholder' ? idx + 1 : '-') + '<br>';
+                rNums += (row.right || row.rCls !== 'diff-placeholder' ? idx + 1 : '-') + '<br>';
+
+                if (row.lCls === 'diff-removed') removed++;
+                else if (row.rCls === 'diff-added') added++;
+                else if (row.lCls === 'diff-changed') changed++;
+            });
+
+            dom.leftHighlight.innerHTML = lHtml;
+            dom.rightHighlight.innerHTML = rHtml;
+            dom.leftLines.innerHTML = lNums;
+            dom.rightLines.innerHTML = rNums;
+
+            dom.diffSummary.innerHTML = `<b>${added}</b> added, <b>${removed}</b> removed, <b>${changed}</b> changed | Total lines: <b>${rows.length}</b>`;
+        }
+
+        function updateHighlights() {
+            if (!STATE.liveHighlight) return;
+            dom.leftHighlight.innerHTML = tokenize(dom.leftInput.value);
+            dom.rightHighlight.innerHTML = tokenize(dom.rightInput.value);
+            updateLineNumbers();
+        }
+
+        function updateLineNumbers() {
+            const lCount = dom.leftInput.value.split('\n').length;
+            const rCount = dom.rightInput.value.split('\n').length;
+            dom.leftLines.innerHTML = Array.from({ length: lCount }, (_, i) => i + 1).join('<br>');
+            dom.rightLines.innerHTML = Array.from({ length: rCount }, (_, i) => i + 1).join('<br>');
+        }
+
+        // --- Input & Events ---
+        function setupListeners() {
+            const syncScroll = (src, dest, nums) => {
+                dest.style.transform = `translateY(-${src.scrollTop}px)`;
+                nums.style.transform = `translateY(-${src.scrollTop}px)`;
+            };
+
+            dom.leftViewport.addEventListener('scroll', () => syncScroll(dom.leftViewport, dom.leftHighlight, dom.leftLines));
+            dom.rightViewport.addEventListener('scroll', () => syncScroll(dom.rightViewport, dom.rightHighlight, dom.rightLines));
+
+            const onInput = (e) => {
+                if (STATE.liveHighlight) {
+                    updateHighlights();
+                }
+                // Push history on input after a short pause to avoid flooding
+                clearTimeout(STATE.inputHistoryTimer);
+                STATE.inputHistoryTimer = setTimeout(() => pushHistory(e.target.id === 'leftInput' ? 'left' : 'right'), 500);
+                saveState();
+            };
+            dom.leftInput.addEventListener('input', onInput);
+            dom.rightInput.addEventListener('input', onInput);
+
+            dom.leftInput.addEventListener('paste', () => {
+                if (STATE.autoFormat) setTimeout(() => handlePaneAction('format', 'left'), 50);
+            });
+            dom.rightInput.addEventListener('paste', () => {
+                if (STATE.autoFormat) setTimeout(() => handlePaneAction('format', 'right'), 50);
+            });
+
+            document.querySelectorAll('.pane-controls .btn').forEach(b => {
+                b.onclick = () => handlePaneAction(b.dataset.action, b.closest('.pane').id === 'paneLeft' ? 'left' : 'right');
+            });
+
+            document.getElementById('runDiff').onclick = runDiff;
+            document.getElementById('themeToggle').onclick = () => {
+                STATE.theme = STATE.theme === 'light' ? 'dark' : 'light';
+                document.body.setAttribute('data-theme', STATE.theme);
+                saveState();
+            };
+
+            document.getElementById('swapPanes').onclick = () => {
+                pushHistory('left'); pushHistory('right');
+                const tmp = dom.leftInput.value;
+                dom.leftInput.value = dom.rightInput.value;
+                dom.rightInput.value = tmp;
+                updateHighlights();
+                saveState();
+            };
+
+            document.getElementById('loadSample').onclick = () => {
+                pushHistory('left'); pushHistory('right');
+                dom.leftInput.value = JSON.stringify({ id: 1, user: { name: "Alice", meta: { login: "2023-01-01" } }, tags: ["dev"] }, null, 2);
+                dom.rightInput.value = JSON.stringify({ id: 1, user: { name: "Alice Wonder", meta: { login: "2023-01-02" } }, active: true, tags: ["dev", "staff"] }, null, 2);
+                updateHighlights();
+            };
+
+            document.getElementById('downloadReport').onclick = downloadReport;
+
+            window.addEventListener('keydown', e => {
+                const isMod = e.ctrlKey || e.metaKey;
+                const activeSide = document.activeElement === dom.rightInput ? 'right' : 'left';
+
+                if (isMod && e.key === 'z') {
+                    e.preventDefault();
+                    handlePaneAction('undo', activeSide);
+                } else if (isMod && (e.key === 'y' || (e.shiftKey && e.key === 'Z'))) {
+                    e.preventDefault();
+                    handlePaneAction('redo', activeSide);
+                } else if (isMod && e.key === 'Enter') {
+                    e.preventDefault();
+                    handlePaneAction('format', activeSide);
+                } else if (isMod && e.key === 'd') {
+                    e.preventDefault(); runDiff();
+                } else if (isMod && e.key === 'l') {
+                    e.preventDefault();
+                    handlePaneAction('clear', activeSide);
+                }
+            });
+        }
+
+        function pushHistory(side) {
+            const val = side === 'left' ? dom.leftInput.value : dom.rightInput.value;
+            const h = STATE.history[side];
+            if (h.undo.length > 0 && h.undo[h.undo.length - 1] === val) return;
+            h.undo.push(val);
+            if (h.undo.length > 100) h.undo.shift();
+            h.redo = []; // Clear redo stack on new action
+        }
+
+        function handlePaneAction(action, side) {
+            const input = side === 'left' ? dom.leftInput : dom.rightInput;
+            const errBox = side === 'left' ? dom.leftError : dom.rightError;
+            const h = STATE.history[side];
+            errBox.style.display = 'none';
+
+            try {
+                if (action === 'undo') {
+                    if (h.undo.length > 1) {
+                        h.redo.push(h.undo.pop());
+                        input.value = h.undo[h.undo.length - 1];
+                    }
+                } else if (action === 'redo') {
+                    if (h.redo.length > 0) {
+                        const val = h.redo.pop();
+                        h.undo.push(val);
+                        input.value = val;
+                    }
+                } else if (action === 'format' || action === 'minify' || action === 'validate') {
+                    pushHistory(side);
+                    const res = validateJson(input.value);
+                    if (!res.ok) throw res;
+                    if (action === 'format') input.value = JSON.stringify(res.value, null, 2);
+                    if (action === 'minify') input.value = JSON.stringify(res.value);
+                    pushHistory(side);
+                } else if (action === 'copy') {
+                    navigator.clipboard.writeText(input.value);
+                } else if (action === 'clear') {
+                    pushHistory(side);
+                    input.value = '';
+                    pushHistory(side);
+                }
+            } catch (e) {
+                errBox.innerHTML = `Line ${e.line}, Col ${e.col}: ${e.message}`;
+                errBox.style.display = 'block';
+            }
+            updateHighlights();
+            saveState();
+        }
+
+        function downloadReport() {
+            if (!STATE.diffData) return alert('No diff results to export.');
+            const { mode, algorithm, rows } = STATE.diffData;
+            let out = `JSON DIFF REPORT - ${new Date().toLocaleString()}\n`;
+            out += `Mode: ${mode} Diff | Algorithm: ${algorithm}\n`;
+            out += `--------------------------------------------------\n\n`;
+            rows.forEach(r => {
+                const mark = r.lCls === 'diff-removed' ? '- ' : (r.rCls === 'diff-added' ? '+ ' : (r.lCls === 'diff-changed' ? '! ' : '  '));
+                if (mark === '! ') {
+                    out += `- ${r.left}\n+ ${r.right}\n`;
+                } else {
+                    out += mark + (r.left || r.right) + '\n';
+                }
+            });
+            const blob = new Blob([out], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url; a.download = 'diff-report.txt'; a.click();
+        }
+
+        function saveState() {
+            const data = {
+                left: dom.leftInput.value, right: dom.rightInput.value,
+                theme: STATE.theme, auto: dom.autoFormat.checked, live: dom.liveHighlight.checked
+            };
+            localStorage.setItem('jsonDiffStateV2', JSON.stringify(data));
+        }
+
+        function init() {
+            const saved = localStorage.getItem('jsonDiffStateV2');
+            if (saved) {
+                const p = JSON.parse(saved);
+                dom.leftInput.value = p.left || '';
+                dom.rightInput.value = p.right || '';
+                STATE.theme = p.theme || 'light';
+                dom.autoFormat.checked = !!p.auto;
+                dom.liveHighlight.checked = p.live !== false;
+                STATE.autoFormat = dom.autoFormat.checked;
+                STATE.liveHighlight = dom.liveHighlight.checked;
+            }
+            document.body.setAttribute('data-theme', STATE.theme);
+            setupListeners();
+            updateHighlights();
+            // Initial history
+            pushHistory('left');
+            pushHistory('right');
+        }
+
+        init();
+    </script>
+</body>
+
+</html>
